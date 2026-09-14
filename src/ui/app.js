@@ -318,14 +318,20 @@ function frame(now) {
 
 function renderScore() {
   const s = world.score();
-  const row = (k, v) => `<div class="row"><span>${k}</span><b>${v}</b></div>`;
-  const side = (a) => {
-    const x = s[a];
-    return `<div class="alliance ${a}"><div class="total">${x.total} <small style="font-size:12px;font-weight:400">${a.toUpperCase()}</small></div>` +
-      row('HIVE tips', `${x.tips} × 20`) + row('in CELL', `${x.cellElements} × 2`) + row('FLOWERs', `${x.flowerPoints} pts`) + row('GARDEN', `${x.gardenElements} × 1`) +
-      row('LEAVE / PARK', `${x.left ? '✓' : '–'} / ${x.parkedAuto ? 'A' : '–'}${x.parkedTeleop ? ' T' : ''}`) + '</div>';
-  };
-  $('score').innerHTML = side('red') + side('blue');
+  const r = s.red, b = s.blue;
+  const park = (x) => `${x.parkedAuto ? 'A' : '–'} ${x.parkedTeleop ? 'T' : '–'}`;
+  const row = (label, rv, bv, cls = '') => `<tr class="${cls}"><th>${label}</th><td class="red">${rv}</td><td class="blue">${bv}</td></tr>`;
+  $('score').innerHTML = `<table class="score-table">
+    <thead><tr><th></th><th class="red">RED</th><th class="blue">BLUE</th></tr></thead>
+    <tbody>
+      ${row('Score', r.total, b.total, 'total')}
+      ${row('HIVE TIPs <small>×20</small>', r.tips, b.tips)}
+      ${row('In CELL <small>×2</small>', r.cellElements, b.cellElements)}
+      ${row('FLOWER pts', r.flowerPoints, b.flowerPoints)}
+      ${row('GARDEN <small>×1</small>', r.gardenElements, b.gardenElements)}
+      ${row('LEAVE', r.left ? '✓' : '–', b.left ? '✓' : '–')}
+      ${row('PARK <small>auto · tele</small>', park(r), park(b))}
+    </tbody></table>`;
 }
 
 let logCount = 0;

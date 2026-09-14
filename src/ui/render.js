@@ -20,7 +20,7 @@ export class FieldRenderer {
     this.ctx = canvas.getContext('2d');
     this.sideCanvas = sideCanvas;
     this.sctx = sideCanvas ? sideCanvas.getContext('2d') : null;
-    this.margin = 30; // inches of space drawn outside the field for the alliance areas
+    this.margin = 26; // inches of space drawn outside the field for the alliance areas
     this.showFov = true;
     this.showTrail = true;
     this.trail = [];
@@ -78,6 +78,30 @@ export class FieldRenderer {
   rect(ctx, r) { this.poly(ctx, [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]]); }
   circle(ctx, x, y, rIn) { const [sx, sy] = this.toScreen(x, y); ctx.beginPath(); ctx.arc(sx, sy, rIn * this.scale, 0, Math.PI * 2); }
 
+  // ---- text helpers -------------------------------------------------------------------
+  /** Font size in px for a label that should be ~`inches` tall on the field, clamped for readability. */
+  fontPx(inches, min = 10, max = 14) { return Math.max(min, Math.min(max, inches * this.scale)); }
+  get small() { return this.scale < 3; }
+
+  /** Text on a rounded dark pill so it stays readable over tiles and zones. */
+  label(ctx, text, sx, sy, o = {}) {
+    const size = o.size || this.fontPx(2.6);
+    ctx.save();
+    ctx.translate(sx, sy);
+    if (o.rotate) ctx.rotate(o.rotate);
+    ctx.font = `${o.bold ? 'bold ' : ''}${size}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const w = ctx.measureText(text).width + size * 0.9, h = size * 1.45;
+    const x = o.align === 'left' ? 0 : o.align === 'right' ? -w : -w / 2;
+    ctx.fillStyle = o.bg || 'rgba(12,14,18,0.8)';
+    roundRect(ctx, x, -h / 2, w, h, 4); ctx.fill();
+    if (o.border) { ctx.strokeStyle = o.border; ctx.lineWidth = 1; ctx.stroke(); }
+    ctx.fillStyle = o.color || '#f2f3f5';
+    ctx.fillText(text, x + w / 2, 0.5);
+    ctx.restore();
+    return { w, h };
+  }
+
   drawSurroundings(ctx, world) {
     ctx.fillStyle = '#1b1e24';
     ctx.fillRect(0, 0, this.size, this.size);
@@ -88,24 +112,16 @@ export class FieldRenderer {
       this.rect(ctx, r); ctx.fill();
       ctx.strokeStyle = alliance === 'red' ? COLORS.red : COLORS.blue;
       ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = alliance === 'red' ? COLORS.red : COLORS.blue;
-      ctx.font = `bold ${Math.max(10, this.scale * 5)}px system-ui, sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const [lx, ly] = this.toScreen(0, alliance === 'red' ? -FIELD.half - this.margin / 2 : FIELD.half + this.margin / 2);
-      ctx.save(); ctx.translate(lx, ly); ctx.rotate(alliance === 'red' ? -Math.PI / 2 : Math.PI / 2);
-      ctx.fillText(`${alliance.toUpperCase()} ALLIANCE AREA`, 0, 0);
-      ctx.fillText(`${world.nectarOffField[alliance]} NECTAR staged`, 0, this.scale * 6);
-      ctx.restore();
+      const text = this.small ? `${alliance.toUpperCase()} ALLIANCE · ${world.nectarOffField[alliance]} NECTAR` : `${alliance.toUpperCase()} ALLIANCE AREA · ${world.nectarOffField[alliance]} NECTAR staged`;
+      this.label(ctx, text, lx, ly, { rotate: alliance === 'red' ? -Math.PI / 2 : Math.PI / 2, size: this.fontPx(3.4, 10, 14), bold: true,
+        color: alliance === 'red' ? '#ff8f88' : '#8fb8ff', bg: 'rgba(12,14,18,0.55)' });
     }
-    // audience label
-    ctx.fillStyle = '#9aa0a8';
-    ctx.font = `${Math.max(10, this.scale * 4)}px system-ui, sans-serif`;
-    const [ax, ay] = this.toScreen(FIELD.half + this.margin * 0.6, 0);
-    ctx.fillText('AUDIENCE', ax, ay);
-    const [bx, by] = this.toScreen(-FIELD.half - this.margin * 0.6, 0);
-    ctx.fillText('REAR (scoring tags side)', bx, by);
+    const [ax, ay] = this.toScreen(FIELD.half + this.margin * 0.55, 0);
+    this.label(ctx, 'AUDIENCE', ax, ay, { size: this.fontPx(3.2, 10, 13), color: '#c9ced8', bg: 'transparent' });
+    const [bx, by] = this.toScreen(-FIELD.half - this.margin * 0.55, 0);
+    this.label(ctx, this.small ? 'REAR' : 'REAR (scoring tags side)', bx, by, { size: this.fontPx(3.2, 10, 13), color: '#c9ced8', bg: 'transparent' });
   }
-
   drawTiles(ctx) {
     const [x0, y0] = this.toScreen(-FIELD.half, -FIELD.half);
     const s = FIELD.size * this.scale;
@@ -136,17 +152,16 @@ export class FieldRenderer {
       ctx.fillStyle = alliance === 'red' ? 'rgba(217,52,43,0.25)' : 'rgba(47,111,214,0.25)';
       this.rect(ctx, z); ctx.fill();
       ctx.strokeStyle = alliance === 'red' ? COLORS.red : COLORS.blue; ctx.lineWidth = Math.max(1.5, this.scale * 0.8); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = `${Math.max(8, this.scale * 2.4)}px system-ui`;
-      ctx.textAlign = 'center';
-      const [lx, ly] = this.toScreen((z.x0 + z.x1) / 2, (z.y0 + z.y1) / 2);
-      ctx.save(); ctx.translate(lx, ly); ctx.rotate(-Math.PI / 2); ctx.fillText('LOADING ZONE', 0, 0); ctx.restore();
+      // label sits just inside the field next to the zone, running along the wall
+      const [lx, ly] = this.toScreen((z.x0 + z.x1) / 2, alliance === 'red' ? z.y1 + 5 : z.y0 - 5);
+      this.label(ctx, this.small ? 'LOADING' : 'LOADING ZONE', lx, ly, { rotate: -Math.PI / 2, size: this.fontPx(2.4, 9, 12), bg: 'rgba(12,14,18,0.65)' });
     }
     for (const [alliance, g] of Object.entries(GARDEN)) {
+      if (typeof g !== 'object') continue;
       ctx.fillStyle = alliance === 'red' ? COLORS.red : COLORS.blue;
       this.rect(ctx, g); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = `${Math.max(8, this.scale * 2.4)}px system-ui`;
-      const [lx, ly] = this.toScreen(g.x0 - 3, (g.y0 + g.y1) / 2);
-      ctx.fillText('GARDEN', lx, ly);
+      const [lx, ly] = this.toScreen(alliance === 'red' ? g.x0 - 4.5 : g.x1 + 4.5, (g.y0 + g.y1) / 2);
+      this.label(ctx, 'GARDEN', lx, ly, { size: this.fontPx(2.4, 9, 12), bg: 'rgba(12,14,18,0.65)' });
     }
   }
 
@@ -161,26 +176,21 @@ export class FieldRenderer {
       ctx.fillStyle = '#3f8f4f';
       this.poly(ctx, [[cx - ax, cy - ay], [cx + ax, cy - ay], [cx + ax, cy + ay], [cx - ax, cy + ay]]); ctx.fill();
       ctx.strokeStyle = '#1e5a2a'; ctx.lineWidth = 1; ctx.stroke();
-      // opening
       ctx.fillStyle = '#183a20';
       this.circle(ctx, f.x, f.y, FLOWER.openingDiameter / 2); ctx.fill();
-      // stack contents as a mini column beside it
+      // label pulled into the field, far enough that the whole pill clears the wall
       const n = fl.stack.length;
-      ctx.font = `bold ${Math.max(9, this.scale * 2.8)}px system-ui`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = COLORS.text;
-      const [tx, ty] = this.toScreen(f.x - wx * 9, f.y - wy * 9);
-      ctx.fillText(`FLOWER ${n}`, tx, ty);
-      fl.stack.forEach((b, i) => {
-        const col = b.kind === 'pollen' ? COLORS.pollen : (b.alliance === 'red' ? COLORS.nectarRed : COLORS.nectarBlue);
-        ctx.fillStyle = col;
-        const [bx, by] = this.toScreen(f.x - wx * (5 + i * 2.2) + (wx === 0 ? 0 : 0), f.y - wy * (5 + i * 2.2));
-        // draw stacked dots perpendicular to the wall
-        ctx.beginPath(); ctx.arc(bx + (wy !== 0 ? 0 : 0), by, Math.max(2, this.scale * 0.9), 0, Math.PI * 2); ctx.fill();
-      });
+      const size = this.fontPx(2.4, 9, 12);
+      const text = `FLOWER ${n}`;
+      ctx.font = `${size}px system-ui, -apple-system, sans-serif`;
+      const halfWidthIn = (ctx.measureText(text).width + size) / 2 / this.scale;
+      // on the red/blue walls the pill is wide along the wall, so offset by its half width and slide toward the corner
+      const off = wy !== 0 ? 5 + halfWidthIn : 8.5;
+      const slide = wy !== 0 ? Math.sign(f.x) * 6 : 0;
+      const [tx, ty] = this.toScreen(f.x - wx * off + slide, f.y - wy * off);
+      this.label(ctx, text, tx, ty, { size, bg: 'rgba(24,58,32,0.85)', border: '#3f8f4f' });
     }
   }
-
   drawHiveFrame(ctx) {
     const f = HIVE.frame;
     ctx.strokeStyle = '#3b3f46'; ctx.lineWidth = Math.max(2, f.footBarWidth * this.scale);
@@ -205,39 +215,39 @@ export class FieldRenderer {
     for (const alliance of ['red', 'blue']) {
       const h = world.hives[alliance];
       const cy = HIVE.centerY[alliance];
-      // animate a tip: interpolate the "up side" position
-      let upSide = h.upSide;
+      const upSide = h.upSide;
       let t = 0;
       if (h.tipping) t = h.tipping.t / h.tipping.duration;
       const color = alliance === 'red' ? COLORS.red : COLORS.blue;
       for (const side of [-1, 1]) {
         const isUp = side === upSide;
-        // footprint of the CELL in X: from the pivot outward
-        const aMin = c.aIn, aMax = c.aOut;
-        const pIn = hiveBodyToField(0, isUp ? aMin : -aMin, 0, cy, upSide);
-        const pOut = hiveBodyToField(0, isUp ? aMax : -aMax, 0, cy, upSide);
+        const pIn = hiveBodyToField(0, isUp ? c.aIn : -c.aIn, 0, cy, upSide);
+        const pOut = hiveBodyToField(0, isUp ? c.aOut : -c.aOut, 0, cy, upSide);
         let x0 = pIn.x, x1 = pOut.x;
-        if (h.tipping) { // swing toward the pivot while tipping
-          const k = 1 - Math.abs(Math.cos(t * Math.PI));
-          x0 *= (1 - k * 0.7); x1 *= (1 - k * 0.7);
-        }
+        if (h.tipping) { const k = 1 - Math.abs(Math.cos(t * Math.PI)); x0 *= (1 - k * 0.7); x1 *= (1 - k * 0.7); }
         const hw = c.width / 2;
         ctx.fillStyle = isUp ? color : shade(color, -0.45);
         ctx.globalAlpha = isUp ? 0.95 : 0.8;
         this.poly(ctx, [[x0, cy - hw], [x1, cy - hw], [x1, cy + hw], [x0, cy + hw]]); ctx.fill();
         ctx.globalAlpha = 1;
         ctx.strokeStyle = shade(color, -0.6); ctx.lineWidth = 1.5; ctx.stroke();
-        // mouth marker on the up CELL
+        const outer = side; // direction (in X) away from the pivot for this CELL
         if (isUp) {
+          // mouth marker
           ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
           const [mx0, my0] = this.toScreen(x1, cy - hw + 1), [mx1, my1] = this.toScreen(x1, cy + hw - 1);
           ctx.beginPath(); ctx.moveTo(mx0, my0); ctx.lineTo(mx1, my1); ctx.stroke();
-          ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(9, this.scale * 2.6)}px system-ui`; ctx.textAlign = 'center';
-          const [lx, ly] = this.toScreen((x0 + x1) / 2, cy);
-          ctx.fillText(`${alliance.toUpperCase()} CELL ${h.tipping ? 'TIPPING' : 'UP'}`, lx, ly - this.scale * 1.6);
-          ctx.fillText(`${h.upCell.length} in · ${world.cellMass(h).toFixed(1)}/${world.opts.tipMass}`, lx, ly + this.scale * 1.8);
+          // labels sit beside the HIVE frame on this alliance's side, where there is room
+          const size = this.fontPx(2.4, 9, 12);
+          const sideY = alliance === 'red' ? cy - hw - 4 : cy + hw + 4;
+          const align = alliance === 'red' ? 'right' : 'left';
+          const midX = (x0 + x1) / 2;
+          const [lx, ly] = this.toScreen(midX - size / this.scale * 0.8, sideY);
+          const [lx2, ly2] = this.toScreen(midX + size / this.scale * 0.9, sideY);
+          this.label(ctx, `${alliance.toUpperCase()} CELL ${h.tipping ? 'TIPPING' : 'UP'}`, lx, ly, { size, bold: true, align, bg: 'rgba(12,14,18,0.8)', border: color });
+          this.label(ctx, `${h.upCell.length} in · ${world.cellMass(h).toFixed(1)}/${world.opts.tipMass}`, lx2, ly2, { size, align, bg: 'rgba(12,14,18,0.8)' });
         } else {
-          // AprilTag cluster on the down CELL's bottom face (visible from below)
+          // AprilTag cluster on the down CELL's bottom face
           ctx.fillStyle = 'rgba(255,255,255,0.85)';
           const cl = HIVE.clusters.find((k) => k.alliance === alliance && k.side === side);
           const mid = (x0 + x1) / 2;
@@ -246,17 +256,14 @@ export class FieldRenderer {
             const r = Math.max(2, 1.6 * this.scale);
             ctx.fillRect(tx - r / 2, ty - r / 2, r, r);
           }
-          ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = `${Math.max(8, this.scale * 2.2)}px system-ui`; ctx.textAlign = 'center';
-          const [lx, ly] = this.toScreen(mid, cy);
-          ctx.fillText(`tags ${cl.ids[0]}-${cl.ids[3]}`, lx, ly + this.scale * 4);
+          const [lx, ly] = this.toScreen(mid, alliance === 'red' ? cy - hw - 4 : cy + hw + 4);
+          this.label(ctx, `tags ${cl.ids[0]}–${cl.ids[3]}`, lx, ly, { size: this.fontPx(2.2, 9, 11), align: alliance === 'red' ? 'right' : 'left', color: '#d8dbe2', bg: 'rgba(12,14,18,0.7)' });
         }
       }
-      // pivot
       const [px, py] = this.toScreen(0, cy);
       ctx.fillStyle = '#eee'; ctx.beginPath(); ctx.arc(px, py, Math.max(2, this.scale * 0.8), 0, Math.PI * 2); ctx.fill();
     }
   }
-
   ballColor(b) { return b.kind === 'pollen' ? COLORS.pollen : (b.alliance === 'red' ? COLORS.nectarRed : COLORS.nectarBlue); }
 
   drawBallsOnFloor(ctx, world) {
@@ -361,19 +368,19 @@ export class FieldRenderer {
     const [x0, y0] = this.toScreen(-FIELD.half, -FIELD.half);
     const s = FIELD.size * this.scale;
     ctx.strokeRect(x0, y0, s, s);
-    ctx.fillStyle = COLORS.red; ctx.font = `bold ${Math.max(9, this.scale * 3)}px system-ui`; ctx.textAlign = 'center';
-    ctx.save(); ctx.translate(x0 - 8, y0 + s / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('RED WALL', 0, 0); ctx.restore();
-    ctx.fillStyle = COLORS.blue;
-    ctx.save(); ctx.translate(x0 + s + 8, y0 + s / 2); ctx.rotate(Math.PI / 2); ctx.fillText('BLUE WALL', 0, 0); ctx.restore();
+    // wall names just inside the field, clear of the LOADING ZONE and GARDEN
+    const [rx, ry] = this.toScreen(-8, -FIELD.half + 3.5);
+    this.label(ctx, 'RED WALL', rx, ry, { rotate: -Math.PI / 2, size: this.fontPx(2.4, 9, 12), color: '#ff8f88', bg: 'rgba(12,14,18,0.65)', bold: true });
+    const [bx, by] = this.toScreen(8, FIELD.half - 3.5);
+    this.label(ctx, 'BLUE WALL', bx, by, { rotate: Math.PI / 2, size: this.fontPx(2.4, 9, 12), color: '#8fb8ff', bg: 'rgba(12,14,18,0.65)', bold: true });
   }
 
   drawLabels(ctx, world) {
-    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = `${Math.max(9, this.scale * 2.6)}px system-ui`; ctx.textAlign = 'left';
     const rb = world.robot;
-    const [sx, sy] = this.toScreen(-FIELD.half - this.margin + 2, -FIELD.half - this.margin + 2);
-    ctx.fillText(`robot X ${rb.x.toFixed(1)}  Y ${rb.y.toFixed(1)}  heading ${(rb.heading * 180 / Math.PI).toFixed(0)}°   t=${world.time.toFixed(1)}s`, sx, sy + 10);
+    const [sx, sy] = this.toScreen(FIELD.half + this.margin - 4, -FIELD.half - this.margin + 2);
+    const text = `robot X ${rb.x.toFixed(1)}  Y ${rb.y.toFixed(1)}  ${(rb.heading * 180 / Math.PI).toFixed(0)}°  ·  t ${world.time.toFixed(1)} s`;
+    this.label(ctx, text, sx, sy, { align: 'left', size: this.fontPx(2.6, 10, 12), bg: 'transparent', color: '#c9ced8' });
   }
-
   // ---- HIVE side view ---------------------------------------------------------------
   drawSideView(world) {
     const cv = this.sideCanvas, ctx = this.sctx;
@@ -383,24 +390,21 @@ export class FieldRenderer {
     if (cv.width !== Math.floor(w * dpr)) { cv.width = Math.floor(w * dpr); cv.height = Math.floor(h * dpr); }
     ctx.save(); ctx.scale(dpr, dpr);
     ctx.fillStyle = '#1b1e24'; ctx.fillRect(0, 0, w, h);
-    // X from -75 (rear, left) to +75 (audience, right); Z from 0 to 75
-    const xs = w / 150, zs = (h - 14) / 75;
+    // X from -75 (rear, left) to +75 (audience, right); Z from 0 to 75, leaving a caption strip on top
+    const topPad = 20;
+    const xs = w / 150, zs = (h - topPad - 10) / 75;
     const toS = (x, z) => [(x + 75) * xs, h - 10 - z * zs];
-    // floor
     ctx.fillStyle = COLORS.tile; ctx.fillRect(0, h - 10, w, 10);
     const alliance = world.alliance;
     const hv = world.hives[alliance];
     const cy = HIVE.centerY[alliance];
     const c = HIVE.cell;
     const color = alliance === 'red' ? COLORS.red : COLORS.blue;
-    // frame legs
     ctx.strokeStyle = '#4a4f57'; ctx.lineWidth = 2;
     for (const sx of [-1, 1]) {
       const [a, b] = toS(sx * 18.95, 0), [d, e] = toS(0, HIVE.frame.legTopZ);
       ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(d, e); ctx.stroke();
     }
-    // cells as parallelograms in the X-Z plane
-    const pent = cellPentagon();
     const bMin = c.b0, bMax = c.b0 + c.height;
     for (const side of [-1, 1]) {
       const isUp = side === hv.upSide;
@@ -414,27 +418,37 @@ export class FieldRenderer {
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(...toS(m.x, m.z)); ctx.lineTo(...toS(t.x, t.z)); ctx.stroke();
       }
     }
-    // arm + pivot
     const pa = hiveBodyToField(0, -c.aOut, 0, cy, hv.upSide), pb = hiveBodyToField(0, c.aOut, 0, cy, hv.upSide);
     ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(...toS(pa.x, pa.z)); ctx.lineTo(...toS(pb.x, pb.z)); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(...toS(0, HIVE.pivotZ), 3, 0, Math.PI * 2); ctx.fill();
-    // balls in flight (any Y) projected on X-Z
     for (const b of world.balls) {
       if (b.state !== 'flight') continue;
       ctx.fillStyle = this.ballColor(b);
       ctx.beginPath(); ctx.arc(...toS(b.x, b.z), Math.max(2, b.r * xs), 0, Math.PI * 2); ctx.fill();
     }
-    // robot as a box
     const rb = world.robot;
-    const rx = rb.x, half = ROBOT_BODY.length / 2;
+    const half = ROBOT_BODY.length / 2;
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    const [r0, rz] = toS(rx - half, ROBOT_BODY.height);
+    const [r0, rz] = toS(rb.x - half, ROBOT_BODY.height);
     ctx.fillRect(r0, rz, ROBOT_BODY.length * xs, ROBOT_BODY.height * zs);
-    ctx.fillStyle = '#ccc'; ctx.font = '10px system-ui'; ctx.textAlign = 'left';
-    ctx.fillText(`${alliance.toUpperCase()} HIVE side view (X-Z). Lip 53.5", top 65.6", pivot 43.95"`, 4, 11);
-    ctx.textAlign = 'right'; ctx.fillText('audience →', w - 4, 11);
+    // caption strip: title on the left, orientation on the right, dimensions only when there is room
+    ctx.font = '11px system-ui, -apple-system, sans-serif'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#e8eaee'; ctx.textAlign = 'left';
+    ctx.fillText(`${alliance.toUpperCase()} HIVE side view`, 6, 10);
+    ctx.fillStyle = '#9aa3b2'; ctx.textAlign = 'right';
+    ctx.fillText('rear ◀ · ▶ audience', w - 6, 10);
+    if (w > 420) { ctx.textAlign = 'center'; ctx.fillText('lip 53.5" · top 65.6" · pivot 43.95"', w / 2, 10); }
     ctx.restore();
   }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
 function shade(hex, amt) {

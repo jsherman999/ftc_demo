@@ -40,13 +40,17 @@ label { color: var(--muted); font-size: 13px; }
 .field-hint { color: var(--muted); font-size: 12px; }
 .field-side { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .side-canvas { width: 100%; height: 150px; background: #1b1e24; border-radius: 8px; border: 1px solid var(--border); }
-.score { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.score .alliance { border-radius: 6px; padding: 6px 8px; }
-.score .alliance.red { background: rgba(217,52,43,0.18); border: 1px solid rgba(217,52,43,0.5); }
-.score .alliance.blue { background: rgba(47,111,214,0.18); border: 1px solid rgba(47,111,214,0.5); }
-.score .total { font-size: 22px; font-weight: 700; }
-.score .row { display: flex; justify-content: space-between; color: var(--muted); }
-.score .row b { color: var(--text); }
+.score { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.score-table { width: 100%; border-collapse: collapse; }
+.score-table th, .score-table td { padding: 3px 6px; white-space: nowrap; }
+.score-table thead th { font-size: 12px; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+.score-table tbody th { text-align: left; font-weight: 500; color: var(--muted); }
+.score-table tbody th small { color: #6f7887; font-size: 11px; }
+.score-table td { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; width: 22%; }
+.score-table .red { color: #ff8f88; }
+.score-table .blue { color: #8fb8ff; }
+.score-table tr.total td { font-size: 22px; font-weight: 700; }
+.score-table tr.total th { color: var(--text); font-weight: 700; }
 .log { background: #0f1116; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; height: 130px; overflow: auto; font: 12px/1.5 var(--mono); color: #c7ccd6; }
 .log .t { color: #6f7887; }
 .log .err { color: #ff7b72; }
@@ -105,3 +109,12 @@ label { color: var(--muted); font-size: 13px; }
 .help { padding: 10px 14px; font-size: 13.5px; }
 .help h3 { margin: 12px 0 6px; font-size: 14px; color: var(--accent); }
 .help table.keys td { padding: 3px 10px 3px 0; }
+
+/* phone widths: stack the side view and the score, tighten spacing (kept last so it wins) */
+@media (max-width: 640px) {
+  .layout { padding: 8px 8px 12px; gap: 10px; }
+  .topbar { padding: 8px 10px; }
+  .field-side { grid-template-columns: 1fr; }
+  .side-canvas { height: 130px; }
+  .field-hint { font-size: 11.5px; }
+}
