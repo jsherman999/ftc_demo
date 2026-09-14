@@ -12,6 +12,9 @@ const $ = (id) => document.getElementById(id);
 const STEP = 0.005;
 const LS_CODE = 'ftc-biobuzz-code';
 const LS_LANG = 'ftc-biobuzz-lang';
+const LS_PROGRAMS = 'ftc-biobuzz-programs';   // { name: { code, language, savedAt } }
+const LS_SETTINGS = 'ftc-biobuzz-settings';   // { alliance, startPose, chassis, speed }
+const LS_NAME = 'ftc-biobuzz-program-name';
 
 // ---- cross-origin isolation check ------------------------------------------------
 if (typeof SharedArrayBuffer === 'undefined' || !window.crossOriginIsolated) {
@@ -427,6 +430,108 @@ let saveTimer = null;
 editor.onChange = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(LS_CODE, editor.value); } catch (e) { /* ignore */ } }, 400); };
 $('language').addEventListener('change', (e) => { try { localStorage.setItem(LS_LANG, e.target.value); } catch (err) { /* ignore */ } });
 
+// ---- persistence: named programs, files, settings ----------------------------------------
+function lsGet(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; } }
+function lsSet(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { logLine('Could not save to browser storage: ' + e.message, 'warn'); return false; } }
+
+function classNameOf(code) {
+  const m = code.match(/class\s+([A-Za-z_$][\w$]*)/);
+  return m ? m[1] : null;
+}
+function refreshProgramList() {
+  const programs = lsGet(LS_PROGRAMS, {});
+  const sel = $('programList');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Saved programs…</option>';
+  for (const name of Object.keys(programs).sort((a, b) => a.localeCompare(b))) {
+    const o = document.createElement('option');
+    const d = new Date(programs[name].savedAt);
+    o.value = name; o.textContent = `${name}  (${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+    sel.appendChild(o);
+  }
+  if (current && programs[current]) sel.value = current;
+}
+function saveProgram() {
+  let name = $('programName').value.trim() || classNameOf(editor.value) || '';
+  if (!name) { name = prompt('Name for this program?') || ''; name = name.trim(); }
+  if (!name) return;
+  $('programName').value = name;
+  const programs = lsGet(LS_PROGRAMS, {});
+  programs[name] = { code: editor.value, language: $('language').value, savedAt: Date.now() };
+  if (lsSet(LS_PROGRAMS, programs)) {
+    lsSet(LS_NAME, name);
+    refreshProgramList();
+    $('programList').value = name;
+    logLine(`Saved program "${name}" in this browser`);
+  }
+}
+function loadProgram(name) {
+  const programs = lsGet(LS_PROGRAMS, {});
+  const p = programs[name];
+  if (!p) return;
+  editor.value = p.code;
+  $('language').value = p.language || 'java';
+  $('programName').value = name;
+  lsSet(LS_NAME, name);
+  editor.onChange();
+  build(p.code, p.language || 'java');
+  logLine(`Loaded program "${name}"`);
+}
+function deleteProgram() {
+  const name = $('programList').value;
+  if (!name) return;
+  if (!confirm(`Delete saved program "${name}"?`)) return;
+  const programs = lsGet(LS_PROGRAMS, {});
+  delete programs[name];
+  lsSet(LS_PROGRAMS, programs);
+  refreshProgramList();
+  logLine(`Deleted program "${name}"`);
+}
+function downloadProgram() {
+  const lang = $('language').value;
+  const name = ($('programName').value.trim() || classNameOf(editor.value) || 'OpMode').replace(/[^\w.-]+/g, '_');
+  const blob = new Blob([editor.value], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}.${lang === 'java' ? 'java' : 'js'}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function openProgramFile(file) {
+  if (!file) return;
+  const text = await file.text();
+  editor.value = text;
+  const lang = file.name.endsWith('.js') ? 'javascript' : 'java';
+  $('language').value = lang;
+  $('programName').value = file.name.replace(/\.(java|js|txt)$/i, '');
+  editor.onChange();
+  build(text, lang);
+  logLine(`Opened ${file.name}`);
+}
+function saveSettings() {
+  lsSet(LS_SETTINGS, { alliance: $('alliance').value, startPose: $('startPose').value, chassis: $('chassis').value, speed: $('speed').value, matchMode: $('matchMode').value });
+}
+function restoreSettings() {
+  const s = lsGet(LS_SETTINGS, null);
+  if (!s) return;
+  if (s.alliance) $('alliance').value = s.alliance;
+  fillStartPoses();
+  if (s.startPose) $('startPose').value = s.startPose;
+  if (s.chassis) $('chassis').value = s.chassis;
+  if (s.speed) { $('speed').value = s.speed; speed = Number(s.speed); }
+  if (s.matchMode) { $('matchMode').value = s.matchMode; $('teleopSelect').hidden = s.matchMode !== 'full'; }
+}
+$('btnSave').addEventListener('click', saveProgram);
+$('programList').addEventListener('change', (e) => { if (e.target.value) loadProgram(e.target.value); });
+$('btnDeleteProgram').addEventListener('click', deleteProgram);
+$('btnDownload').addEventListener('click', downloadProgram);
+$('btnOpen').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', (e) => { openProgramFile(e.target.files[0]); e.target.value = ''; });
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveProgram(); }
+});
+for (const id of ['alliance', 'startPose', 'chassis', 'speed', 'matchMode']) $(id).addEventListener('change', saveSettings);
+
 // samples
 async function loadSamples() {
   try {
@@ -440,6 +545,8 @@ async function loadSamples() {
         const src = await (await fetch('samples/' + s.file)).text();
         editor.value = src;
         $('language').value = 'java';
+        $('programName').value = '';
+        lsSet(LS_NAME, '');
         editor.onChange();
         document.querySelector('.tab[data-tab="code"]').click();
         build(src, 'java');
@@ -475,7 +582,9 @@ function renderRobotConfig() {
 // ---- boot ---------------------------------------------------------------------------------
 async function boot() {
   fillStartPoses();
+  restoreSettings();
   renderRobotConfig();
+  refreshProgramList();
   input.onChange = (st) => { $('gp1').textContent = st[1]; $('gp2').textContent = st[2]; };
   input.updateStatus();
   createWorker();
@@ -486,6 +595,7 @@ async function boot() {
   if (!code && samples.length) code = await (await fetch('samples/' + samples[0].file)).text();
   editor.value = code || '';
   $('language').value = lang;
+  $('programName').value = lsGet(LS_NAME, '') || '';
   if (code) build(code, lang);
   logLine('Simulator ready. Pick a sample or write an OpMode, press Build, then INIT and START.');
   requestAnimationFrame(frame);

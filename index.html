@@ -83,6 +83,16 @@
         <button id="btnBuild" class="btn build" title="Ctrl+Enter">Build ⚙</button>
       </div>
       <div id="tab-code" class="tab-body">
+        <div class="filebar">
+          <input id="programName" class="program-name" placeholder="program name" title="Name this program to save it in this browser">
+          <button id="btnSave" title="Save this program in the browser (localStorage)">Save</button>
+          <select id="programList" title="Saved programs"><option value="">Saved programs…</option></select>
+          <button id="btnDeleteProgram" title="Delete the selected saved program">Delete</button>
+          <span class="tab-spacer"></span>
+          <button id="btnDownload" title="Download this program as a .java file">Download .java</button>
+          <button id="btnOpen" title="Open a .java or .js file from your computer">Open file…</button>
+          <input id="fileInput" type="file" accept=".java,.js,.txt" hidden>
+        </div>
         <div id="editor"></div>
         <div id="buildOutput" class="build-output"></div>
       </div>
@@ -96,6 +106,8 @@
             <li>Pick the OpMode in the Driver Station, press <b>INIT</b>, then <b>▶ START</b>. <b>■ STOP</b> ends it.</li>
             <li>Drive with a USB/Bluetooth gamepad (press START+A to make it gamepad1, START+B for gamepad2) or the keyboard.</li>
           </ol>
+          <h3>Saving your work</h3>
+          <p>Programs are kept in this browser's storage: type a name and press <b>Save</b>; reopen them from the <b>Saved programs</b> list. Browser storage is per computer and per browser and can be cleared, so use <b>Download .java</b> to keep a copy (in your team's GitHub repository, a shared drive, or a USB stick) and <b>Open file…</b> to load it again. A downloaded file is a normal OnBot Java file that can be uploaded to a real Control Hub. Alliance, start position, chassis and speed settings are remembered too.</p>
           <h3>Keyboard = gamepad1</h3>
           <table class="keys">
             <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>left stick</td><td><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></td><td>right stick</td></tr>

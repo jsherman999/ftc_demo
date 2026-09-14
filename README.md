@@ -10,7 +10,18 @@ would program a real robot: paste an **OnBot Java OpMode** (`LinearOpMode` or
 
 ![screenshot](docs/screenshot.png)
 
-## Run it
+## Use it online
+
+**https://jsherman999.github.io/ftc_demo/**
+
+The simulator is a static site, so it runs on GitHub Pages with full
+functionality: the OpMode runtime, gamepads, saving programs. The first visit
+reloads once while a service worker installs; that is expected. (The site is
+published by `.github/workflows/pages.yml`, which enables Pages on its first
+run; if the link is not live yet, run that workflow from the Actions tab or
+merge this branch to `main`.)
+
+## Run it locally
 
 ```bash
 node server.js          # or: npm start
@@ -20,10 +31,19 @@ node server.js          # or: npm start
 No dependencies. Node 20+ is the only requirement. The tiny server exists only
 because the OpMode runtime blocks its thread with `Atomics.wait` (like a real
 `LinearOpMode`), which browsers allow only on pages served with the
-cross-origin-isolation headers the server adds. If you host the files on GitHub
-Pages or any static host instead, `coi-serviceworker.js` adds those headers via
-a service worker and reloads once. Opening `index.html` straight from disk does
-not work.
+cross-origin-isolation headers the server adds. On GitHub Pages or any other
+static host, `coi-serviceworker.js` adds those headers through a service
+worker instead. Opening `index.html` straight from disk does not work.
+
+## Saving student work
+
+Programs are saved by name in the browser (**Save**, **Saved programs**) and
+survive reloads; alliance, start position, chassis and speed settings are
+remembered too. Browser storage is per computer and per browser, so students
+should also **Download .java** to keep their OpModes in a folder, a USB stick
+or the team's own GitHub repository, and **Open file…** to load them back. The
+downloaded file is a normal OnBot Java file that can be uploaded to a real
+Control Hub. This works the same online and when running locally.
 
 Drive with a USB or Bluetooth gamepad (press **START + A** to bind it as
 gamepad1, **START + B** for gamepad2, exactly like the Driver Hub) or with the

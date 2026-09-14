@@ -21,15 +21,18 @@ if (typeof window === 'undefined') {
       return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
     }));
   });
-} else if (!window.crossOriginIsolated && 'serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register(document.currentScript.src).then((reg) => {
-    if (reg.active && !navigator.serviceWorker.controller) {
-      // the worker is installed but not yet controlling this page
-      window.location.reload();
-    }
-    reg.addEventListener('updatefound', () => {
-      const w = reg.installing;
-      w.addEventListener('statechange', () => { if (w.state === 'activated' && !navigator.serviceWorker.controller) window.location.reload(); });
-    });
+} else if (window.crossOriginIsolated) {
+  // isolation is working; allow a future retry if it ever stops working
+  try { sessionStorage.removeItem('coi-reloaded'); } catch (e) { /* ignore */ }
+} else if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const src = document.currentScript.src;
+  navigator.serviceWorker.register(src).then(async () => {
+    // Wait until a worker is active, then reload ONCE so the document itself is
+    // fetched through the worker and picks up the headers. The sessionStorage
+    // flag stops a reload loop in browsers where isolation still fails.
+    await navigator.serviceWorker.ready;
+    let already = false;
+    try { already = sessionStorage.getItem('coi-reloaded') === '1'; if (!already) sessionStorage.setItem('coi-reloaded', '1'); } catch (e) { /* ignore */ }
+    if (!already) window.location.reload();
   }).catch((e) => console.warn('coi-serviceworker registration failed', e));
 }

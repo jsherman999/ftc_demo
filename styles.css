@@ -81,6 +81,8 @@ label { color: var(--muted); font-size: 13px; }
 .tab-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
 .tab-body[hidden] { display: none; }
 
+.filebar { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.program-name { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; width: 170px; }
 .editor { display: flex; flex: 1; min-height: 320px; font: 13px/1.45 var(--mono); background: #0f1116; }
 .editor-gutter { width: 44px; padding: 8px 0; text-align: right; color: #5c6473; background: #14171d; overflow: hidden; user-select: none; border-right: 1px solid var(--border); }
 .editor-gutter .ln { padding-right: 8px; height: 1.45em; }
