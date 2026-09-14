@@ -1,0 +1,15 @@
+{
+  "name": "ftc-biobuzz-field-simulator",
+  "version": "0.1.0",
+  "description": "Browser simulator of the 2026-2027 FIRST Tech Challenge BIOBUZZ field and a virtual robot programmed with the FTC SDK OpMode API.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
