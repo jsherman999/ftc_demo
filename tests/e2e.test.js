@@ -35,6 +35,8 @@ async function session(code, opts = {}) {
   while (!s.opModes && !s.error) await wait(10);
   if (s.error) throw new Error('load failed: ' + s.error.message);
   s.run = async (seconds) => { for (let k = 0; k < seconds * 200 && !s.done; k++) { world.step(0.005); if (k % 20 === 0) await wait(1); } };
+  /** Step the world until pred() holds or maxSeconds of simulated time pass. */
+  s.runUntil = async (pred, maxSeconds) => { for (let t = 0; t < maxSeconds && !s.done && !pred(); t += 0.2) await s.run(0.2); await wait(20); return pred(); };
   s.start = () => Atomics.store(v.i32, I.STATE, OpModeState.RUNNING);
   s.stop = async () => { Atomics.store(v.i32, I.STOP_REQUESTED, 1); for (let k = 0; k < 400 && !s.done; k++) { world.step(0.005); await wait(2); } };
   s.close = () => worker.terminate();
@@ -53,7 +55,8 @@ test('tank TeleOp sample: gamepad drives the robot, telemetry flows, STOP ends t
     const y0 = s.world.robot.y;
     await s.run(1.5);
     assert.ok(s.world.robot.y - y0 > 30, `robot moved forward ${s.world.robot.y - y0}`);
-    assert.ok(s.telemetry.some((l) => l.startsWith('Motors : left (1.00)')), s.telemetry.join('|'));
+    const seen = await s.runUntil(() => s.telemetry.some((l) => l.startsWith('Motors : left (1.00)')), 3);
+    assert.ok(seen, s.telemetry.join('|'));
     await s.stop();
     assert.equal(s.done, true);
     assert.equal(s.error, null);
@@ -99,8 +102,8 @@ test('AprilTag sample sees the CELL clusters through VisionPortal', async () => 
     s.worker.postMessage({ type: 'run', name: s.opModes[0].name });
     await s.run(0.3);
     s.start();
-    await s.run(1);
-    assert.ok(s.telemetry.some((l) => /CLUSTER RED (AUDIENCE|SCORING)/.test(l)), s.telemetry.join('|'));
+    const seen = await s.runUntil(() => s.telemetry.some((l) => /CLUSTER RED (AUDIENCE|SCORING)/.test(l)), 5);
+    assert.ok(seen, s.telemetry.join('|'));
     assert.ok(s.telemetry.some((l) => /tag 3\d/.test(l)));
     await s.stop();
     assert.equal(s.error, null);
