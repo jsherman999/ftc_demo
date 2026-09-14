@@ -11,7 +11,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, master, claude/ftc-2026-field-simulator-4iqxeg]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
