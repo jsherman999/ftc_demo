@@ -1,0 +1,11 @@
+[
+  { "file": "01_BasicTankTeleop.java", "title": "Basic: Tank Drive (SDK sample)", "description": "The stock LinearOpMode sample. Left stick drives, right stick turns." },
+  { "file": "02_MecanumFieldRelative.java", "title": "Mecanum Field-Relative Drive (SDK sample)", "description": "Iterative OpMode using the IMU so the stick direction is relative to the field." },
+  { "file": "03_BioBuzzTeleop.java", "title": "BIOBUZZ TeleOp: intake + launcher", "description": "Collect POLLEN, spin up the launcher, adjust the hood and fire into the HIVE." },
+  { "file": "04_AutoDriveByEncoder.java", "title": "Auto: Drive By Encoder (SDK sample)", "description": "RUN_TO_POSITION path: forward, turn, reverse." },
+  { "file": "05_AutoDriveByGyro.java", "title": "Auto: Drive By Gyro (SDK sample)", "description": "Encoder distance plus IMU heading for straight lines and precise turns." },
+  { "file": "06_BioBuzzAuto.java", "title": "BIOBUZZ Auto: shoot preloads and park", "description": "Leave, fire the 4 preloaded POLLEN at the HIVE, park in the LOADING ZONE." },
+  { "file": "07_AprilTagAim.java", "title": "BIOBUZZ: AprilTag aim", "description": "VisionPortal + AprilTagProcessor: see the CELL tag clusters and auto-aim." },
+  { "file": "08_SensorTour.java", "title": "Sensor tour", "description": "Distance, colour, touch and IMU readings while the robot explores." },
+  { "file": "09_Blank.java", "title": "Blank OpMode", "description": "A minimal starting point for your own program." }
+]

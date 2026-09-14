@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FTC BIOBUZZ Field Simulator</title>
+<link rel="stylesheet" href="styles.css">
+<script src="coi-serviceworker.js"></script>
+</head>
+<body>
+<div id="banner" class="banner" hidden></div>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🐝</span>
+    <div>
+      <div class="title">FTC BIOBUZZ Field Simulator</div>
+      <div class="subtitle">2026-2027 FIRST Tech Challenge · virtual field + StarterBot · program it with the FTC SDK</div>
+    </div>
+  </div>
+  <div class="topbar-controls">
+    <label>Alliance <select id="alliance"><option value="red">Red</option><option value="blue">Blue</option></select></label>
+    <label>Start <select id="startPose"></select></label>
+    <label>Chassis <select id="chassis"><option value="mecanum">Mecanum</option><option value="tank">Tank</option></select></label>
+    <label>Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+    <button id="resetField" title="Put every scoring element and the robot back to the starting layout">Reset field</button>
+    <button id="loadNectar" title="Human player: place one staged NECTAR in your LOADING ZONE">Load NECTAR</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="field-pane">
+    <canvas id="field" class="field-canvas" aria-label="Top-down view of the BIOBUZZ field"></canvas>
+    <div class="field-hint">Drag the robot to move it (when no OpMode is running) · <kbd>[</kbd> / <kbd>]</kbd> rotate · scroll the log below for events</div>
+    <div class="field-side">
+      <canvas id="side" class="side-canvas" aria-label="HIVE side view"></canvas>
+      <div class="score" id="score"></div>
+    </div>
+    <div class="log" id="log"></div>
+  </section>
+
+  <section class="right-pane">
+    <div class="driver-station">
+      <div class="ds-header">
+        <span class="ds-title">Driver Station</span>
+        <span id="dsStatus" class="ds-status">no OpMode loaded</span>
+      </div>
+      <div class="ds-row">
+        <label>Match <select id="matchMode">
+          <option value="practice">Practice (no timer)</option>
+          <option value="auto">AUTO · 30 s</option>
+          <option value="teleop">TELEOP · 2:00</option>
+          <option value="full">Full match (AUTO → TELEOP)</option>
+        </select></label>
+        <span id="timer" class="timer">0:00</span>
+      </div>
+      <div class="ds-row">
+        <select id="opModeSelect" class="opmode-select"><option>— build your code first —</option></select>
+        <select id="teleopSelect" class="opmode-select" hidden title="TeleOp OpMode for the full match"></select>
+      </div>
+      <div class="ds-row ds-buttons">
+        <button id="btnInit" class="btn init" disabled>INIT</button>
+        <button id="btnStart" class="btn start" disabled>▶ START</button>
+        <button id="btnStop" class="btn stop" disabled>■ STOP</button>
+      </div>
+      <pre id="telemetry" class="telemetry">Telemetry appears here</pre>
+      <div class="gamepads">
+        <div>gamepad1: <span id="gp1">keyboard</span></div>
+        <div>gamepad2: <span id="gp2">none</span></div>
+        <div id="gpState" class="gp-state"></div>
+      </div>
+    </div>
+
+    <div class="editor-pane">
+      <div class="tabs">
+        <button class="tab active" data-tab="code">Code</button>
+        <button class="tab" data-tab="samples">Samples</button>
+        <button class="tab" data-tab="robot">Robot</button>
+        <button class="tab" data-tab="help">Help</button>
+        <span class="tab-spacer"></span>
+        <label class="lang">Language
+          <select id="language"><option value="java">Java (OnBot Java)</option><option value="javascript">JavaScript</option></select>
+        </label>
+        <button id="btnBuild" class="btn build" title="Ctrl+Enter">Build ⚙</button>
+      </div>
+      <div id="tab-code" class="tab-body">
+        <div id="editor"></div>
+        <div id="buildOutput" class="build-output"></div>
+      </div>
+      <div id="tab-samples" class="tab-body" hidden><div id="samples" class="samples"></div></div>
+      <div id="tab-robot" class="tab-body" hidden><div id="robotConfig" class="robot-config"></div></div>
+      <div id="tab-help" class="tab-body" hidden>
+        <div class="help">
+          <h3>How to use</h3>
+          <ol>
+            <li>Write or paste an OpMode in the <b>Code</b> tab (Java, exactly like OnBot Java) and press <b>Build</b>.</li>
+            <li>Pick the OpMode in the Driver Station, press <b>INIT</b>, then <b>▶ START</b>. <b>■ STOP</b> ends it.</li>
+            <li>Drive with a USB/Bluetooth gamepad (press START+A to make it gamepad1, START+B for gamepad2) or the keyboard.</li>
+          </ol>
+          <h3>Keyboard = gamepad1</h3>
+          <table class="keys">
+            <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>left stick</td><td><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></td><td>right stick</td></tr>
+            <tr><td><kbd>Q</kbd> / <kbd>E</kbd></td><td>left / right trigger</td><td><kbd>N</kbd> / <kbd>M</kbd></td><td>left / right bumper</td></tr>
+            <tr><td><kbd>J</kbd> <kbd>K</kbd> <kbd>U</kbd> <kbd>I</kbd></td><td>A · B · X · Y</td><td><kbd>T</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd></td><td>dpad up · left · down · right</td></tr>
+            <tr><td><kbd>Enter</kbd> / <kbd>Backspace</kbd></td><td>start / back</td><td></td><td></td></tr>
+          </table>
+          <h3>The game in one minute</h3>
+          <ul>
+            <li><b>POLLEN</b> (yellow, 2.8 in) and <b>NECTAR</b> (red/blue, 3.62 in) are launched into your alliance's <b>HIVE</b> CELL. The HIVE is bi-stable: put enough in the upward CELL and it <b>TIPS</b> (20 points), dumping everything out and raising the other CELL.</li>
+            <li>The HIVE mouth is 53.5–65.6 in above the tiles and tilted 30°, so shoot from 4–6 ft away with a high arc. Watch the side view.</li>
+            <li>A robot may carry at most 4 elements. It may not touch the other alliance's NECTAR.</li>
+            <li>AUTO is 30 s: LEAVE the start (3), TIP (20 each), PARK in the LOADING ZONE (5). TELEOP is 2:00: more TIPS, then in the last 60 s fill the four <b>FLOWERs</b> (4 in opening, 21.5 in high) — the alliance whose NECTAR is on top owns the FLOWER (2 per element, +5 for NECTAR at the bottom). Elements in your GARDEN score 1 each. PARK again at the end (5).</li>
+            <li>One staged NECTAR is unlocked into the LOADING ZONE per TIP; the rest with 60 s left. Press <b>Load NECTAR</b> to play human player.</li>
+            <li>AprilTags: four 3.25 in tags on the bottom of every CELL (IDs 30–45). They move with the HIVE, so use them for aiming, not for absolute localisation.</li>
+          </ul>
+          <h3>Coordinates</h3>
+          <p>Official FTC field frame: origin at the field centre on the tiles, +Z up, +Y from the red wall toward the blue wall, +X toward the audience. Headings are counter-clockwise from +X. The IMU yaw is zero wherever the robot pointed when the OpMode was initialised (or the last <code>resetYaw()</code>).</p>
+          <h3>What the simulator models (and not)</h3>
+          <p>Motors spin up over ~0.1 s and have the goBILDA free speeds; encoders count wheel rotation, so a robot stalled against a wall still counts. Mecanum strafing is 90 % efficient. Launched balls feel drag and gravity; the launcher wheel slows a little each shot. Things not modelled: ball spin, other robots, motor current limits, battery sag beyond a small voltage drop. The mass needed to tip a HIVE is not published; the default is 8 POLLEN-equivalents (a NECTAR counts as 1.65).</p>
+          <p>Full field dimensions and sources: <a href="docs/FIELD.md" target="_blank">docs/FIELD.md</a>. Supported SDK API: <a href="docs/API.md" target="_blank">docs/API.md</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<script type="module" src="src/ui/app.js"></script>
+</body>
+</html>
