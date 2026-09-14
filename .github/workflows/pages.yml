@@ -4,9 +4,9 @@
 # coi-serviceworker.js adds the cross-origin-isolation headers that Pages
 # cannot set, so SharedArrayBuffer (and therefore the OpMode runtime) works.
 #
-# First run: this workflow enables Pages for the repository automatically
-# (source = GitHub Actions). If your organisation blocks that, enable it once
-# under Settings -> Pages -> Source: GitHub Actions, then re-run the workflow.
+# One-time setup: Settings -> Pages -> Build and deployment -> Source:
+# "GitHub Actions". (configure-pages tries to enable it, but the default
+# workflow token is not allowed to create the Pages site.) Then re-run.
 name: Deploy to GitHub Pages
 
 on:

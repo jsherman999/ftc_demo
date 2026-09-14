@@ -16,10 +16,13 @@ would program a real robot: paste an **OnBot Java OpMode** (`LinearOpMode` or
 
 The simulator is a static site, so it runs on GitHub Pages with full
 functionality: the OpMode runtime, gamepads, saving programs. The first visit
-reloads once while a service worker installs; that is expected. (The site is
-published by `.github/workflows/pages.yml`, which enables Pages on its first
-run; if the link is not live yet, run that workflow from the Actions tab or
-merge this branch to `main`.)
+reloads once while a service worker installs; that is expected.
+
+The site is published by `.github/workflows/pages.yml`. One-time setup by a
+repository admin: **Settings → Pages → Build and deployment → Source: GitHub
+Actions** (the workflow token is not allowed to switch this on by itself).
+After that, every push to `main` (or to this feature branch) redeploys; you
+can also run the workflow by hand from the **Actions** tab.
 
 ## Run it locally
 
