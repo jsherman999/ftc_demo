@@ -80,7 +80,8 @@ export class Telemetry {
     return { addData: (c, v, ...a) => { this.addData(c, v, ...a); return this; } };
   }
   update() {
-    const now = performance.now();
+    // throttle on simulated time so behaviour does not depend on how fast the host runs
+    const now = runtime.views ? runtime.simTime() * 1000 : performance.now();
     const lines = [...this._retained, ...this._lines].map((it) => (it.isLine ? it.caption : `${it.caption}${this._captionValueSeparator}${it.value}`));
     if (this._logLines.length) lines.push(...this._logLines.map((l) => `> ${l}`));
     if (runtime.telemetryOut && (now - this._lastSent >= this._intervalMs || !this._autoClear)) {
